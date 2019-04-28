@@ -12,7 +12,7 @@ The examples are presented in Kotlin.
 **Table of Contents**
 
 * [Arity](#arity)
-* [Higher-Order Functions (HOF)](#higher-order-functions-hof)
+* [Higher-Order Functions (HOF)](#higher-order-functions)
 * [Closure](#closure)
 * [Partial Application](#partial-application)
 * [Currying](#currying)
@@ -32,7 +32,6 @@ The examples are presented in Kotlin.
 * [Pointed Functor](#pointed-functor)
 * [Lift](#lift)
 * [Referential Transparency](#referential-transparency)
-* [Equational Reasoning](#equational-reasoning)
 * [Lambda](#lambda)
 * [Lambda Calculus](#lambda-calculus)
 * [Lazy evaluation](#lazy-evaluation)
@@ -45,15 +44,9 @@ The examples are presented in Kotlin.
   * [Isomorphism](#isomorphism)
   * [Homomorphism](#homomorphism)
   * [Catamorphism](#catamorphism)
-  * [Anamorphism](#anamorphism)
-  * [Hylomorphism](#hylomorphism)
-  * [Paramorphism](#paramorphism)
-  * [Apomorphism](#apomorphism)
-* [Setoid](#setoid)
 * [Semigroup](#semigroup)
 * [Foldable](#foldable)
 * [Lens](#lens)
-* [Type Signatures](#type-signatures)
 * [Algebraic data type](#algebraic-data-type)
   * [Sum type](#sum-type)
   * [Product type](#product-type)
@@ -84,7 +77,8 @@ println(arity) // 2
 // The arity of sum is 2
 ```
 
-## Higher-Order Functions (HOF)
+
+## Higher-Order Functions
 
 A function which takes a function as an argument and/or returns a function.
 
@@ -106,40 +100,57 @@ val isA = { type: KClass<out Any> ->
 filter(isA(Int::class), arrayOf(0, "1", 2)) // [0, 2]
 ```
 
+
 ## Closure
 
-A closure is a scope which retains variables available to a function when it's created. This is important for
-[partial application](#partial-application) to work.
+A closure is a way of accessing a variable outside its scope. This is important for 
+[partial application](#partial-application) to work. Formally, a closure is a technique for implementing
+lexically scoped named binding. It is a way of storing a function with an environment.
+
+A closure is a scope which captures local variables of a function for access even after the execution has moved
+out of the block in which it is defined. ie. they allow referencing a scope after the block in which the variables
+were declared has finished executing.
 
 
 ```kotlin
 val addTo = { x: Int ->
-    { y: Int ->
-        x + y
+    fun add(y: Int): Int {
+        return x + y
     }
+    ::add
 }
-```
 
-We can call `addTo` with a number and get back a function with a baked-in `x`.
-
-```kotlin
 val addToFive = addTo(5)
-```
 
-In this case the `x` is retained in `addToFive`'s closure with the value `5`. We can then call `addToFive` with the `y`
-and get back the desired number.
-
-```
 addToFive(3) // 8
 ```
 
-This works because variables that are in parent scopes are not garbage-collected as long as the function
-itself is retained.
+> Note that we could have defined `addTo` with just lambdas. `add` here demonstrates how local function
+declaration works in Kotlin.
 
-Closures are commonly used in event handlers so that they still have access to variables defined in their
-parents when they are eventually called.
+The function `addTo()` returns a function (`add`), lets us store it in a variable called `addToFive` with a
+[curried](#currying) call having the parameter `5`.
 
-**Further reading**
+Ideally, when the function `addTo` finishes execution, its scope, with local variables `add`, `x` and `y` should
+not be accessible. But, it returns 8 on calling `addToFive()`. This means that the state of the function `addTo`
+is saved even after the block of code has finished executing, otherwise there is no way of knowing that `addTo`
+was called as `addTo(5)` and the value of `x` was set to `5`.
+
+Lexical scoping is the reason why it is able to find the values of `x` and `add` - the private variables of the
+parent which has finished executing. This value is called a Closure.
+
+The stack along with the lexical scope of the function is stored in form of reference to the parent.
+This prevents the closure and the underlying variables from being garbage collected (since there is at least one
+live reference to it).
+
+Lambda Vs Closure: A lambda is essentially a function that is defined inline rather than the standard method of
+declaring functions. Lambdas can frequently be passed around as objects.
+
+A closure is a function that encloses its surrounding state by referencing fields external to its body.
+The enclosed state remains across invocations of the closure.
+
+
+**Further reading / Sources**
 * [Lambda Vs Closure](http://stackoverflow.com/questions/220658/what-is-the-difference-between-a-closure-and-a-lambda)
 * [Closures in Kotlin](https://kotlinlang.org/docs/reference/lambdas.html#closures)
 
@@ -192,58 +203,6 @@ val add2 = curriedSum(2) // (b: Int) -> 2 + b
 add2(10) // 12
 ```
 
-## Closure
-
-A closure is a way of accessing a variable outside its scope.
-Formally, a closure is a technique for implementing lexically scoped named binding. It is a way of storing
-a function with an environment.
-
-A closure is a scope which captures local variables of a function for access even after the execution has moved
-out of the block in which it is defined. ie. they allow referencing a scope after the block in which the variables
-were declared has finished executing.
-
-
-```kotlin
-val addTo = { x: Int ->
-    fun add(y: Int): Int {
-        return x + y
-    }
-    ::add
-}
-
-val addToFive = addTo(5)
-
-addToFive(3) // 8
-```
-
-> Note that we could have defined `addTo` with just lambdas. `add` here demonstrates how local function
-declaration works in Kotlin.
-
-The function `addTo()` returns a function (`add`), lets us store it in a variable called `addToFive` with a curried call
-having the parameter `5`.
-
-Ideally, when the function `addTo` finishes execution, its scope, with local variables `add`, `x` and `y` should
-not be accessible. But, it returns 8 on calling `addToFive()`. This means that the state of the function `addTo`
-is saved even after the block of code has finished executing, otherwise there is no way of knowing that `addTo`
-was called as `addTo(5)` and the value of `x` was set to `5`.
-
-Lexical scoping is the reason why it is able to find the values of `x` and `add` - the private variables of the
-parent which has finished executing. This value is called a Closure.
-
-The stack along with the lexical scope of the function is stored in form of reference to the parent.
-This prevents the closure and the underlying variables from being garbage collected (since there is at least one
-live reference to it).
-
-Lambda Vs Closure: A lambda is essentially a function that is defined inline rather than the standard method of
-declaring functions. Lambdas can frequently be passed around as objects.
-
-A closure is a function that encloses its surrounding state by referencing fields external to its body.
-The enclosed state remains across invocations of the closure.
-
-
-**Further reading / Sources**
-* [Lambda Vs Closure](http://stackoverflow.com/questions/220658/what-is-the-difference-between-a-closure-and-a-lambda)
-* [Closures in Kotlin](https://kotlinlang.org/docs/reference/lambdas.html#closures)
 
 ## Auto Currying
 
@@ -258,15 +217,18 @@ support for currying.
 **Further reading**
 * [Favoring Curry](http://fr.umio.us/favoring-curry/)
 
+
 ## Function Composition
 
 The act of putting two functions together to form a third function where the output of one function is the input
 of the other.
 
 ```kotlin
-fun <T, U, R> compose(f: (T) -> U, g: (U) -> R): (T) -> R {
-    return { t: T ->
-        g(f(t))
+typealias Function<T, R> = (T) -> R
+
+fun <T, U, R> compose(f: Function<T, U>, g: Function<U, R>): Function<T, R> {
+    return { param: T ->
+        g(f(param))
     }
 }
 
@@ -276,6 +238,7 @@ floorAndToString(121.212121) // "121"
 ```
 
 > Note that the Kotlin compiler can infer the generic type parameters so we don't have to pass them here.
+
 
 ## Continuation
 
@@ -309,6 +272,7 @@ try {
     // handle error
 }
 ```
+
 
 ## Purity
 
@@ -350,6 +314,7 @@ greeting // "Hi, Brianne"
 
 ... and this one modifies state outside of the function.
 
+
 ## Side effects
 
 A function or expression is said to have a *side effect* if apart from returning a value, 
@@ -361,11 +326,12 @@ val differentEveryTime = {
 }
 ```
 
-```js
+```kotlin
 println("IO is a side effect!")
 ```
 
-## Idempotent
+
+## Idempotence
 
 A function is *idempotent* if reapplying it to its result does not produce a different result.
 
@@ -381,10 +347,11 @@ abs(abs(10))
 listOf(2, 1).sorted().sorted().sorted()
 ```
 
+
 ## Point-Free Style
 
 Writing functions where the definition does not explicitly identify the arguments used.
-This style usually requires [currying](#currying) or other [Higher-Order functions](#higher-order-functions-hof).
+This style usually requires [currying](#currying) or other [Higher-Order functions](#higher-order-functions).
 A.K.A *Tacit programming*.
 
 ```kotlin
@@ -417,7 +384,9 @@ by combining functions and values, making no mention of its arguments.  It **is*
 
 Points-free function definitions look just like normal assignments without `numbers: List<Int> ->`
 
+
 ## Predicate
+
 A predicate is a function that returns `true` or `false` for a given value. A common use of a predicate is
 as the callback for filters.
 
@@ -428,6 +397,7 @@ val predicate = { a: Int ->
 
 listOf(1, 2, 3, 4).filter(predicate) // [3, 4]
 ```
+
 
 ## Contracts
 
@@ -455,6 +425,7 @@ addOne("some string") // Contract violated: expected an Int
 > Note that Kotlin has its own implementation of [Contracts](https://kotlinlang.org/docs/reference/whatsnew13.html#contracts)
 but it is still an *experimental* feature
 
+
 ## Category
 
 A *category* in category theory is a collection of objects and morphisms between them. In programming, typically types
@@ -480,6 +451,7 @@ composing things.
 
 * [Category Theory for Programmers](https://bartoszmilewski.com/2014/10/28/category-theory-for-programmers-the-preface/)
 
+
 ## Value
 
 Anything that can be assigned to a variable.
@@ -493,6 +465,7 @@ mapOf("name" to "John", "age" to 30) // a Map is immutable
 listOf(1)
 null
 ```
+
 
 ## Constant
 
@@ -512,9 +485,10 @@ With the above two constants the following expression will always return `true`.
 twoAndThree + five == listOf(2, 3) + 5
 ```
 
+
 ## Functor
 
-An object that implements a `map` function which, while running over each value in the object to produce a new object,
+An object that implements a `map` function which, while iterating over each value in the object to produce a new object,
 adheres to two rules:
 
 **Preserves identity**
@@ -530,7 +504,7 @@ object.map(compose(f, g)) ≍ object.map(g).map(f)
 
 (`f`, `g` are arbitrary functions)
 
-A common functor in *Kotlin* is `List` since it abides to the two functor rules:
+A common functor in *Kotlin* is `List` since it adheres to the two functor rules:
 
 ```kotlin
 listOf(1, 2, 3).map { it } // [1, 2, 3]
@@ -546,6 +520,7 @@ listOf(1, 2, 3).map { f(g(it)) } // [3, 5, 7]
 listOf(1, 2, 3).map(g).map(f) // [3, 5, 7]
 ```
 
+
 ## Pointed Functor
 
 An object with an `of` function that puts *any* single value into it.
@@ -558,7 +533,10 @@ listOf(1)
 
 > In other languages `of` might be called `just`.
 
+
 ## Lift
+
+TODO: this is a mess, fix it
 
 Lifting is when you take a value and put it into an object like a [functor](#pointed-functor).
 If you lift a function into an [Applicative Functor](#applicative-functor) then you can make it work on
@@ -601,10 +579,6 @@ val greet = { "Hello World!" }
 Any invocation of `greet()` can be replaced with `Hello World!` hence `greet` is
 referentially transparent.
 
-##  Equational Reasoning
-
-When an application is composed of expressions and devoid of side effects, truths about the system can be derived
-from the parts.
 
 ## Lambda
 
@@ -625,11 +599,13 @@ You can assign a lambda to a variable.
 val add1 = { a: Int -> a + 1 }
 ```
 
+
 ## Lambda Calculus
 
 A branch of mathematics that uses functions to create a [universal model of computation](https://en.wikipedia.org/wiki/Lambda_calculus).
 [This](http://palmstroem.blogspot.com/2012/05/lambda-calculus-for-absolute-dummies.html) article explains it in depth
 and it is also very easy to understand.
+
 
 ## Lazy evaluation
 
@@ -643,15 +619,17 @@ in the example below and `lazy` for lazy initialization.
 ```kotlin
 val rand = {
     sequence {
-        yield(Random.nextInt())
-    }.iterator()
+        while (true) {
+            yield(Random.nextInt())
+        }
+    }
 }
 ```
 
 ```kotlin
-val randIter = rand()
-randIter.next()
+rand().take(10).toList()
 ```
+
 
 ## Monoid
 
@@ -711,6 +689,7 @@ operator fun <T, U, R> Function<T, U>.plus(fn: Function<U, R>): Function<T, R> {
 foo + identity ≍ identity + foo ≍ foo
 ```
 
+
 ## Monad
 
 A monad is an object with [`of`](#pointed-functor) and `flatMap` functions. `flatMap` is like [`map`](#functor)
@@ -738,6 +717,7 @@ listOf("cat,dog", "fish,bird").map {
 > `of` is also known as `just` in other languages.
 > `flatMap` is also known as `bind` in other languages.
 
+
 ## Comonad
 
 An object that has `extract` and `extend` functions.
@@ -763,9 +743,11 @@ CoIdentity(1).extract() // 1
 CoIdentity(1).extend { it + 1 } // CoIdentity(2)
 ```
 
+
 ## Applicative Functor
 
-An applicative functor is an object with an `ap` function. `ap` applies a function in the object to a value in another object of the same type.
+An applicative functor is an object with an `ap` function. `ap` applies a function in the object to a value in another
+object of the same type.
 
 ```kotlin
 // Implementation
@@ -799,9 +781,11 @@ This gives you an array of functions that you can call `ap` on to get the result
 partiallyAppliedAdds.ap(arg1) // [5, 6, 7, 8]
 ```
 
+
 ## Morphism
 
 A transformation function.
+
 
 ### Endomorphism
 
@@ -815,6 +799,7 @@ val uppercase = { str: String -> str.toUpperCase() }
 val decrement = { x: Int -> x - 1 }
 ```
 
+
 ### Isomorphism
 
 A pair of transformations between 2 types of objects that is structural in nature and no data is lost.
@@ -823,137 +808,62 @@ For example, 2D coordinates could be stored as an array `[2,3]` or object `{x: 2
 
 ```js
 // Providing functions to convert in both directions makes them isomorphic.
-const pairToCoords = (pair) => ({x: pair[0], y: pair[1]})
+val pairToCoords = { (x, y): Pair<Int, Int> -> Coords(x, y) }
 
-const coordsToPair = (coords) => [coords.x, coords.y]
+val coordsToPair = { (x, y): Coords -> x to y }
 
-coordsToPair(pairToCoords([1, 2])) // [1, 2]
+coordsToPair(pairToCoords(1 to 2)) // (1, 2)
 
-pairToCoords(coordsToPair({x: 1, y: 2})) // {x: 1, y: 2}
+pairToCoords(coordsToPair(Coords(1, 2))) // Coords(x=1, y=2)
 ```
+
 
 ### Homomorphism
 
-A homomorphism is just a structure preserving map. In fact, a functor is just a homomorphism between categories as it preserves the original category's structure under the mapping.
+A homomorphism is a structure preserving `map`. In fact, a [functor](#functor) is just a homomorphism between
+[categories](#category) as it preserves the original category's structure under the mapping.
 
-```js
+```kotlin
 A.of(f).ap(A.of(x)) == A.of(f(x))
 
-Either.of(_.toUpper).ap(Either.of("oreos")) == Either.of(_.toUpper("oreos"))
+listOf(uppercase).ap(listOf("oreos")) == listOf(uppercase("oreos"))
 ```
+
 
 ### Catamorphism
 
-A `reduceRight` function that applies a function against an accumulator and each value of the array (from right-to-left) to reduce it to a single value.
+A `reduceRight` function that applies a function against an accumulator and each value of the array (from right-to-left)
+to reduce it to a single value.
 
-```js
-const sum = xs => xs.reduceRight((acc, x) => acc + x, 0)
+```kotlin
+val sum = { values: List<Int> -> values.reduceRight{ x, acc -> acc + x}}
 
-sum([1, 2, 3, 4, 5]) // 15
-```
-
-### Anamorphism
-
-An `unfold` function. An `unfold` is the opposite of `fold` (`reduce`). It generates a list from a single value.
-
-```js
-const unfold = (f, seed) => {
-  function go(f, seed, acc) {
-    const res = f(seed);
-    return res ? go(f, res[1], acc.concat([res[0]])) : acc;
-  }
-  return go(f, seed, [])
-}
-```
-
-```js
-const countDown = n => unfold((n) => {
-  return n <= 0 ? undefined : [n, n - 1]
-}, n)
-
-countDown(5) // [5, 4, 3, 2, 1]
-```
-
-### Hylomorphism
-
-The combination of anamorphism and catamorphism.
-
-### Paramorphism
-
-A function just like `reduceRight`. However, there's a difference:
-
-In paramorphism, your reducer's arguments are the current value, the reduction of all previous values, and the list of values that formed that reduction.
-
-```js
-// Obviously not safe for lists containing `undefined`,
-// but good enough to make the point.
-const para = (reducer, accumulator, elements) => {
-  if (elements.length === 0)
-    return accumulator
-
-  const head = elements[0]
-  const tail = elements.slice(1)
-
-  return reducer(head, tail, para(reducer, accumulator, tail))
-}
-
-const suffixes = list => para(
-  (x, xs, suffxs) => [xs, ... suffxs],
-  [],
-  list
-)
-
-suffixes([1, 2, 3, 4, 5]) // [[2, 3, 4, 5], [3, 4, 5], [4, 5], [5], []]
-```
-
-The third parameter in the reducer (in the above example, `[x, ... xs]`) is kind of like having a history of what got you to your current acc value.
-
-### Apomorphism
-
-it's the opposite of paramorphism, just as anamorphism is the opposite of catamorphism. Whereas with paramorphism, you combine with access to the accumulator and what has been accumulated, apomorphism lets you `unfold` with the potential to return early.
-
-## Setoid
-
-An object that has an `equals` function which can be used to compare other objects of the same type.
-
-Make array a setoid:
-
-```js
-Array.prototype.equals = function (arr) {
-  const len = this.length
-  if (len !== arr.length) {
-    return false
-  }
-  for (let i = 0; i < len; i++) {
-    if (this[i] !== arr[i]) {
-      return false
-    }
-  }
-  return true
-}
-
-;[1, 2].equals([1, 2]) // true
-;[1, 2].equals([0]) // false
+sum(listOf(1, 2, 3, 4, 5)) // 15
 ```
 
 ## Semigroup
 
-An object that has a `concat` function that combines it with another object of the same type.
+An object that has a `concat` function that combines it with another object of the same type. Note that
+a semigroup is different from a [monoid](#monoid) because it doesn't require an `identity` function.
 
-```js
-;[1].concat([2]) // [1, 2]
+```kotlin
+listOf(1) + listOf(2) // [1, 2]
 ```
+
 
 ## Foldable
 
-An object that has a `reduce` function that applies a function against an accumulator and each element in the array (from left to right) to reduce it to a single value.
+An object that has a `reduce` function that applies a function against an accumulator and each element in the array
+(from left to right) to reduce it to a single value.
 
 ```js
 const sum = (list) => list.reduce((acc, val) => acc + val, 0)
 sum([1, 2, 3]) // 6
 ```
 
-## Lens ##
+
+## Lens
+
 A lens is a structure (often an object or function) that pairs a getter and a non-mutating setter for some other data
 structure.
 
@@ -1003,46 +913,16 @@ Other implementations:
 * [partial.lenses](https://github.com/calmm-js/partial.lenses) - Tasty syntax sugar and a lot of powerful features
 * [nanoscope](http://www.kovach.me/nanoscope/) - Fluent-interface
 
-## Type Signatures
-
-Often functions in JavaScript will include comments that indicate the types of their arguments and return values.
-
-There's quite a bit of variance across the community but they often follow the following patterns:
-
-```js
-// functionName :: firstArgType -> secondArgType -> returnType
-
-// add :: Number -> Number -> Number
-const add = (x) => (y) => x + y
-
-// increment :: Number -> Number
-const increment = (x) => x + 1
-```
-
-If a function accepts another function as an argument it is wrapped in parentheses.
-
-```js
-// call :: (a -> b) -> a -> b
-const call = (f) => (x) => f(x)
-```
-
-The letters `a`, `b`, `c`, `d` are used to signify that the argument can be of any type. The following version of `map` takes a function that transforms a value of some type `a` into another type `b`, an array of values of type `a`, and returns an array of values of type `b`.
-
-```js
-// map :: (a -> b) -> [a] -> [b]
-const map = (f) => (list) => list.map(f)
-```
-
-__Further reading__
-* [Ramda's type signatures](https://github.com/ramda/ramda/wiki/Type-Signatures)
-* [Mostly Adequate Guide](https://drboolean.gitbooks.io/mostly-adequate-guide/content/ch7.html#whats-your-type)
-* [What is Hindley-Milner?](http://stackoverflow.com/a/399392/22425) on Stack Overflow
-
 ## Algebraic data type
-A composite type made from putting other types together. Two common classes of algebraic types are [sum](#sum-type) and [product](#product-type).
+
+A composite type made from putting other types together. Two common classes of algebraic types are [sum](#sum-type)
+and [product](#product-type).
+
 
 ### Sum type
-A Sum type is the combination of two types together into another one. It is called sum because the number of possible values in the result type is the sum of the input types.
+
+A Sum type is the combination of two types together into another one. It is called sum because the number of possible
+values in the result type is the sum of the input types.
 
 JavaScript doesn't have types like this but we can use `Set`s to pretend:
 ```js
@@ -1056,9 +936,12 @@ const weakLogicValues = new Set([...bools, ...halfTrue])
 
 Sum types are sometimes called union types, discriminated unions, or tagged unions.
 
-There's a [couple](https://github.com/paldepind/union-type) [libraries](https://github.com/puffnfresh/daggy) in JS which help with defining and using union types.
+There's a [couple](https://github.com/paldepind/union-type) [libraries](https://github.com/puffnfresh/daggy)
+in JS which help with defining and using union types.
 
-Flow includes [union types](https://flow.org/en/docs/types/unions/) and TypeScript has [Enums](https://www.typescriptlang.org/docs/handbook/enums.html) to serve the same role.
+Flow includes [union types](https://flow.org/en/docs/types/unions/) and TypeScript has 
+[Enums](https://www.typescriptlang.org/docs/handbook/enums.html) to serve the same role.
+
 
 ### Product type
 
@@ -1068,11 +951,14 @@ A **product** type combines types together in a way you're probably more familia
 // point :: (Number, Number) -> {x: Number, y: Number}
 const point = (x, y) => ({ x, y })
 ```
-It's called a product because the total possible values of the data structure is the product of the different values. Many languages have a tuple type which is the simplest formulation of a product type.
+It's called a product because the total possible values of the data structure is the product of the different values.
+Many languages have a tuple type which is the simplest formulation of a product type.
 
 See also [Set theory](https://en.wikipedia.org/wiki/Set_theory).
 
+
 ## Option
+
 Option is a [sum type](#sum-type) with two cases often called `Some` and `None`.
 
 Option is useful for composing functions that might not return a value.
@@ -1121,8 +1007,15 @@ getNestedPrice({item: {price: 9.99}}) // Some(9.99)
 
 `Option` is also known as `Maybe`. `Some` is sometimes called `Just`. `None` is sometimes called `Nothing`.
 
+
 ## Function
-A **function** `f :: A => B` is an expression - often called arrow or lambda expression - with **exactly one (immutable)** parameter of type `A` and **exactly one** return value of type `B`. That value depends entirely on the argument, making functions context-independant, or [referentially transparent](#referential-transparency). What is implied here is that a function must not produce any hidden [side effects](#side-effects) - a function is always [pure](#purity), by definition. These properties make functions pleasant to work with: they are entirely deterministic and therefore predictable. Functions enable working with code as data, abstracting over behaviour:
+
+A **function** `f :: A => B` is an expression - often called arrow or lambda expression - with **exactly one
+(immutable)** parameter of type `A` and **exactly one** return value of type `B`. That value depends entirely on the
+argument, making functions context-independent, or [referentially transparent](#referential-transparency).
+What is implied here is that a function must not produce any hidden [side effects](#side-effects) - a function is
+always [pure](#purity), by definition. These properties make functions pleasant to work with: they are entirely
+deterministic and therefore predictable. Functions enable working with code as data, abstracting over behaviour:
 
 ```js
 // times2 :: Number -> Number
@@ -1131,8 +1024,13 @@ const times2 = n => n * 2
 [1, 2, 3].map(times2) // [2, 4, 6]
 ```
 
+
 ## Partial function
-A partial function is a [function](#function) which is not defined for all arguments - it might return an unexpected result or may never terminate. Partial functions add cognitive overhead, they are harder to reason about and can lead to runtime errors. Some examples:
+
+A partial function is a [function](#function) which is not defined for all arguments - it might return an unexpected
+result or may never terminate. Partial functions add cognitive overhead, they are harder to reason about and can lead
+to runtime errors. Some examples:
+
 ```js
 // example 1: sum of the list
 // sum :: [Number] -> Number
@@ -1160,9 +1058,19 @@ times(-1)(console.log)
 // RangeError: Maximum call stack size exceeded
 ```
 
+
 ### Dealing with partial functions
-Partial functions are dangerous as they need to be treated with great caution. You might get an unexpected (wrong) result or run into runtime errors. Sometimes a partial function might not return at all. Being aware of and treating all these edge cases accordingly can become very tedious.
-Fortunately a partial function can be converted to a regular (or total) one. We can provide default values or use guards to deal with inputs for which the (previously) partial function is undefined. Utilizing the [`Option`](#Option) type, we can yield either `Some(value)` or `None` where we would otherwise have behaved unexpectedly:
+
+Partial functions are dangerous as they need to be treated with great caution. You might get an unexpected (wrong)
+result or run into runtime errors. Sometimes a partial function might not return at all. Being aware of and treating
+all these edge cases accordingly can become very tedious.
+
+Fortunately a partial function can be converted to a regular (or total) one. We can provide default values or use guards
+to deal with inputs for which the (previously) partial function is undefined.
+
+Utilizing the [`Option`](#Option) type, we can yield either `Some(value)` or `None` where we would otherwise
+have behaved unexpectedly:
+
 ```js
 // example 1: sum of the list
 // we can provide default value so it will always return result
@@ -1195,26 +1103,12 @@ times(3)(console.log)
 times(-1)(console.log)
 // won't execute anything
 ```
-Making your partial functions total ones, these kinds of runtime errors can be prevented. Always returning a value will also make for code that is both easier to maintain as well as to reason about.
 
-## Functional Programming Libraries in JavaScript
+Making your partial functions total ones, these kinds of runtime errors can be prevented. Always returning a value
+will also make for code that is both easier to maintain as well as to reason about.
 
-* [mori](https://github.com/swannodette/mori)
-* [Immutable](https://github.com/facebook/immutable-js/)
-* [Immer](https://github.com/mweststrate/immer)
-* [Ramda](https://github.com/ramda/ramda)
-* [ramda-adjunct](https://github.com/char0n/ramda-adjunct)
-* [Folktale](http://folktale.origamitower.com/)
-* [monet.js](https://cwmyers.github.io/monet.js/)
-* [lodash](https://github.com/lodash/lodash)
-* [Underscore.js](https://github.com/jashkenas/underscore)
-* [Lazy.js](https://github.com/dtao/lazy.js)
-* [maryamyriameliamurphies.js](https://github.com/sjsyrek/maryamyriameliamurphies.js)
-* [Haskell in ES6](https://github.com/casualjavascript/haskell-in-es6)
-* [Sanctuary](https://github.com/sanctuary-js/sanctuary)
-* [Crocks](https://github.com/evilsoft/crocks)
-* [Fluture](https://github.com/fluture-js/Fluture)
 
----
+## Functional Programming Libraries for Kotlin
 
-__P.S:__ This repo is successful due to the wonderful [contributions](https://github.com/hemanth/functional-programming-jargon/graphs/contributors)!
+Right now the de facto tool for functional programming in Kotlin is [Arrow](https://arrow-kt.io/). It has
+everything you might need and comes with batteries included.
