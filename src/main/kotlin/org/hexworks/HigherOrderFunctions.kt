@@ -1,6 +1,6 @@
-package com.example
+package org.hexworks
 
-import com.example.util.print
+import org.hexworks.util.print
 import kotlin.reflect.KClass
 import kotlin.reflect.full.isSuperclassOf
 

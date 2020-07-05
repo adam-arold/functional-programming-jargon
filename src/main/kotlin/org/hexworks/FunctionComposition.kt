@@ -1,7 +1,7 @@
-package com.example
+package org.hexworks
 
-import com.example.util.compose
-import com.example.util.print
+import org.hexworks.util.compose
+import org.hexworks.util.print
 import kotlin.math.roundToInt
 
 fun main() {

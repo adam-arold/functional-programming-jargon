@@ -1,13 +1,15 @@
 # Functional Programming Jargon
 
 > This document is a port of the original [Functional Programming Jargon](https://github.com/hemanth/functional-programming-jargon)
-to the **Kotlin** programming language. Feel free to read the original if you are looking for a Javascript version.
+> to the **[Kotlin](https://kotlinlang.org/)** programming language. Feel free to read the original if you are
+> looking for a Javascript version.
 
 Functional programming (FP) provides many advantages, and its popularity has been increasing as a result.
-However, each programming paradigm comes with its own unique jargon and FP is no exception.
-By providing a glossary, we hope to make learning FP easier.
+However, each programming paradigm comes with its own unique jargon and FP is no exception. By providing a
+glossary, we hope to make learning FP easier.
 
-The examples are presented in Kotlin.
+This document improves upon the original one with real world code examples which will make the concepts much easier
+to understand.
 
 **Table of Contents**
 
@@ -55,15 +57,30 @@ The examples are presented in Kotlin.
 * [Partial function](#partial-function)
 * [Functional Programming Libraries in JavaScript](#functional-programming-libraries-in-javascript)
 
+## Function
+
+A **function** `f :: A => B` is an expression - often called arrow or lambda expression - with **exactly one
+(immutable)** parameter of type `A` and **exactly one** return value of type `B`. That value depends entirely on the
+argument, making functions context-independent, or [referentially transparent](#referential-transparency).
+What is implied here is that a function must not produce any hidden [side effects](#side-effects) - a function is
+always [pure](#purity), by definition. These properties make functions pleasant to work with: they are entirely
+deterministic and therefore predictable. Functions enable working with code as data, abstracting over behaviour:
+
+```kotlin
+// times2 :: Number -> Number
+val times2 = { n: Int -> n * 2 }
+
+listOf(1, 2, 3).map(times2).print() // [2, 4, 6]
+```
 
 ## Arity
 
-The number of arguments a function takes. From words like unary, binary, ternary, etc. This word has the distinction of
-being composed of two suffixes, "-ary" and "-ity." Addition, for example, takes two arguments, and so it is defined as
-a binary function or a function with an arity of two. Such a function may sometimes be called "dyadic" by people who
-prefer Greek roots to Latin. Likewise, a function that takes a variable number of arguments is called "variadic,"
-whereas a binary function must be given two and only two arguments, currying and partial application notwithstanding
-(see below).
+The number of arguments a [function](#function) takes. From words like unary, binary, ternary, etc. This word has the
+distinction of being composed of two suffixes, "-ary" and "-ity." Addition, for example, takes two arguments, and so
+it is defined as a binary function or a function with an arity of two. Such a function may sometimes be called "dyadic"
+by people who prefer Greek roots to Latin. Likewise, a function that takes a variable number of arguments is called
+"variadic," whereas a binary function must be given two and only two arguments, [currying](#currying)
+and [partial application](#partial-application) notwithstanding (see below).
 
 ```kotlin
 val sum = { x: Int, y: Int ->
@@ -107,9 +124,9 @@ A closure is a way of accessing a variable outside its scope. This is important 
 [partial application](#partial-application) to work. Formally, a closure is a technique for implementing
 lexically scoped named binding. It is a way of storing a function with an environment.
 
-A closure is a scope which captures local variables of a function for access even after the execution has moved
-out of the block in which it is defined. ie. they allow referencing a scope after the block in which the variables
-were declared has finished executing.
+In other words, a closure is a scope which captures local variables of a function for access even after the execution
+has moved out of the block in which it is defined. ie. they allow referencing a scope after the block in which the
+variables were declared has finished executing.
 
 
 ```kotlin
@@ -137,7 +154,7 @@ is saved even after the block of code has finished executing, otherwise there is
 was called as `addTo(5)` and the value of `x` was set to `5`.
 
 Lexical scoping is the reason why it is able to find the values of `x` and `add` - the private variables of the
-parent which has finished executing. This value is called a Closure.
+parent which has finished executing. This value is called a *closure*.
 
 The stack along with the lexical scope of the function is stored in form of reference to the parent.
 This prevents the closure and the underlying variables from being garbage collected (since there is at least one
@@ -159,60 +176,63 @@ The enclosed state remains across invocations of the closure.
 
 Partially applying a function means creating a new function by pre-filling some of the arguments to the original function.
 
+Kotlin doesn't support partial application out of the box, but it is easy to write extension functions to enable doing
+this:
 
 ```kotlin
+fun <A, B, C> Function2<A, B, C>.partial(a: A): (B) -> C {
+    return { b -> invoke(a, b) }
+}
+
 // Something to apply
-val add3 = { a: Int, b: Int, c: Int ->
-    a + b + c
+val add2 = { a: Int, b: Int ->
+    a + b
 }
 
-// Partially applying `2` and `3` to `add3` gives you a one-argument function
-val fivePlus = { x: Int ->
-    add3(x, 2, 3)
-}
+// Partially applying `5` to `add2` gives us a one-argument function
+val fivePlus = add2.partial(5)
 
-fivePlus(4) // 9
+fivePlus(4).print() // 9
 ```
 
 Partial application helps create simpler functions from more complex ones by baking in data when you have it.
-[Curried](#currying) functions are automatically partially applied.
+[Curried](#currying) functions are automatically partially applied. Creating partially applied functions is also
+a good example of [higher order functions](#higher-order-functions).
 
 
 ## Currying
 
-The process of converting a function that takes multiple arguments into a function that takes them one at a time.
+The process of converting a function that takes multiple arguments into a chain of [higher order functions](#higher-order-functions)
+that take them one at a time.
 
 Each time the function is called it only accepts one argument and returns a function that takes one argument
 until all arguments are passed.
 
+Currying is not supported in Kotlin out of the box, but we can implement it using extension functions just like we did
+with [partially applied functions](#partial-application).
+
 ```kotlin
+fun <A, B, Z> ((A, B) -> Z).curry(): (A) -> (B) -> Z = { a: A ->
+    { b: B ->
+        invoke(a, b)
+    }
+}
+
 val sum = { a: Int, b: Int ->
     a + b
 }
 
-val curriedSum = { a: Int ->
-    { b: Int ->
-        a + b
-    }
-}
+val curriedSum = sum.curry()
 
 curriedSum(40)(2) // 42.
 
 val add2 = curriedSum(2) // (b: Int) -> 2 + b
 
-add2(10) // 12
+add2(10).print() // 12
 ```
-
-
-## Auto Currying
-
-Transforming a function that takes multiple arguments into one that if given less than its correct number
-of arguments returns a function that takes the rest. When the function gets the correct number of arguments
-it is then evaluated.
 
 When using Kotlin you can add [Arrow](https://arrow-kt.io) to your project dependencies which comes with built-in
 support for currying.
-
 
 **Further reading**
 * [Favoring Curry](http://fr.umio.us/favoring-curry/)
@@ -409,8 +429,7 @@ and errors are generally reported whenever a contract is violated.
 val contract = { input: Any ->
     if (input is Int) {
         input
-    } else throw RuntimeException(
-            "Contract violated: expected an Int")
+    } else throw RuntimeException("Contract violated: expected an Int")
 }
 
 val addOne = { num: Any ->
@@ -442,14 +461,15 @@ To be a valid category 3 rules must be met:
 3. Composition must be associative
    `f • (g • h)` is the same as `(f • g) • h`
 
-> Note that `•` is the `compose` operator
+> Note that `•` is the `compose` operator. In Kotlin we can overload the `+` (`plus`) operator to
+> enable function composition with infix syntax.
 
 Since these rules govern composition at a very abstract level, category theory is great at uncovering new ways of
 composing things.
 
-**Further reading**
+**Further reading* 
 
-* [Category Theory for Programmers](https://bartoszmilewski.com/2014/10/28/category-theory-for-programmers-the-preface/)
+- [Category Theory for Programmers](https://bartoszmilewski.com/2014/10/28/category-theory-for-programmers-the-preface/)
 
 
 ## Value
@@ -538,7 +558,7 @@ listOf(1)
 
 TODO: this is a mess, fix it
 
-Lifting is when you take a value and put it into an object like a [functor](#pointed-functor).
+Lifting is when you take a value and put it into an object like with a [pointed functor](#pointed-functor).
 If you lift a function into an [Applicative Functor](#applicative-functor) then you can make it work on
 values that are also in that functor.
 
@@ -1006,23 +1026,6 @@ getNestedPrice({item: {price: 9.99}}) // Some(9.99)
 ```
 
 `Option` is also known as `Maybe`. `Some` is sometimes called `Just`. `None` is sometimes called `Nothing`.
-
-
-## Function
-
-A **function** `f :: A => B` is an expression - often called arrow or lambda expression - with **exactly one
-(immutable)** parameter of type `A` and **exactly one** return value of type `B`. That value depends entirely on the
-argument, making functions context-independent, or [referentially transparent](#referential-transparency).
-What is implied here is that a function must not produce any hidden [side effects](#side-effects) - a function is
-always [pure](#purity), by definition. These properties make functions pleasant to work with: they are entirely
-deterministic and therefore predictable. Functions enable working with code as data, abstracting over behaviour:
-
-```js
-// times2 :: Number -> Number
-const times2 = n => n * 2
-
-[1, 2, 3].map(times2) // [2, 4, 6]
-```
 
 
 ## Partial function

@@ -1,7 +1,7 @@
-package com.example
+package org.hexworks
 
-import com.example.util.ap
-import com.example.util.print
+import org.hexworks.util.ap
+import org.hexworks.util.print
 
 data class Coords(val x: Int, val y: Int)
 

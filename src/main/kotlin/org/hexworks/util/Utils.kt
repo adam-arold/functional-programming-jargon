@@ -1,6 +1,5 @@
-package com.example.util
+package org.hexworks.util
 
-import com.example.Either
 
 fun Any.print() = println(this)
 

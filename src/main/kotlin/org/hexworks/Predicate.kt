@@ -1,6 +1,7 @@
-package com.example
+package org.hexworks
 
-import com.example.util.print
+import org.hexworks.util.print
+
 
 fun main() {
     val predicate = { a: Int ->

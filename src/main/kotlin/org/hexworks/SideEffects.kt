@@ -1,4 +1,4 @@
-package com.example
+package org.hexworks
 
 import java.util.*
 

@@ -1,7 +1,7 @@
-package com.example
+package org.hexworks
 
-import com.example.util.CoIdentity
-import com.example.util.print
+import org.hexworks.util.CoIdentity
+import org.hexworks.util.print
 
 fun main() {
 
